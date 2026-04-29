@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StyleFlow — AI Style Advisor</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400;1,600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080d14;--bg2:#0c1220;--bg3:#101828;--surface:#141f30;--surface2:#1a2840;
+  --border:rgba(96,165,250,0.12);--border2:rgba(96,165,250,0.22);--border3:rgba(96,165,250,0.35);
+  --text:#dde9f8;--text-muted:#7a9cbd;--text-faint:#3d5a78;
+  --blue:#60a5fa;--cyan:#22d3ee;--teal:#2dd4bf;--indigo:#818cf8;--violet:#a78bfa;
+  --gold:#fbbf24;--rose:#fb7185;
+  --grad1:linear-gradient(135deg,#60a5fa,#22d3ee);
+  --grad2:linear-gradient(135deg,#818cf8,#a78bfa);
+  --grad3:linear-gradient(135deg,#2dd4bf,#60a5fa);
+  --r:12px;--r2:20px;--r3:28px;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--blue)}
+
+/* ── SMOOTH REVEAL ── */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-delay-1{transition-delay:.1s}
+.reveal-delay-2{transition-delay:.2s}
+.reveal-delay-3{transition-delay:.3s}
+.reveal-delay-4{transition-delay:.4s}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:999;height:62px;display:flex;align-items:center;justify-content:space-between;padding:0 2.5rem;background:rgba(8,13,20,0);backdrop-filter:blur(0px);border-bottom:1px solid transparent;transition:background .4s,backdrop-filter .4s,border-color .4s}
+nav.scrolled{background:rgba(8,13,20,0.92);backdrop-filter:blur(20px);border-color:var(--border)}
+.logo{font-family:'Cormorant Garamond',serif;font-size:1.55rem;font-weight:700;color:var(--text);letter-spacing:.02em;text-decoration:none}
+.logo em{font-style:italic;color:var(--blue)}
+.nav-links{display:flex;gap:1.75rem;list-style:none}
+.nav-links a{text-decoration:none;color:var(--text-muted);font-size:.78rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;transition:color .25s;position:relative}
+.nav-links a::after{content:'';position:absolute;bottom:-3px;left:0;width:0;height:1px;background:var(--blue);transition:width .3s}
+.nav-links a:hover{color:var(--text)}
+.nav-links a:hover::after{width:100%}
+.nav-pill{background:var(--grad1);color:#080d14;border:none;padding:.42rem 1.3rem;border-radius:100px;font-family:'Outfit',sans-serif;font-size:.78rem;font-weight:700;cursor:pointer;transition:opacity .2s,transform .2s;letter-spacing:.02em}
+.nav-pill:hover{opacity:.88;transform:translateY(-1px)}
+
+/* ── HERO ── */
+.hero{min-height:100vh;display:flex;align-items:center;padding:80px 2.5rem 5rem;position:relative;overflow:hidden}
+.hero-noise{position:absolute;inset:0;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:200px}
+.hero-orb1{position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(96,165,250,0.08) 0%,transparent 70%);top:-100px;right:-100px;animation:orbFloat 12s ease-in-out infinite}
+.hero-orb2{position:absolute;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(34,211,238,0.06) 0%,transparent 70%);bottom:0;left:-80px;animation:orbFloat 16s ease-in-out infinite reverse}
+@keyframes orbFloat{0%,100%{transform:translate(0,0)}50%{transform:translate(20px,-30px)}}
+.hero-grid-lines{position:absolute;inset:0;background-image:linear-gradient(rgba(96,165,250,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(96,165,250,0.04) 1px,transparent 1px);background-size:60px 60px}
+.hero-inner{position:relative;z-index:1;max-width:1200px;width:100%;margin:0 auto;display:grid;grid-template-columns:1fr 1.1fr;gap:5rem;align-items:center}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:.5rem;font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--blue);background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);padding:.32rem 1rem;border-radius:100px;margin-bottom:1.5rem}
+.hero-eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--blue);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+h1{font-family:'Cormorant Garamond',serif;font-size:clamp(3rem,5.5vw,4.8rem);line-height:1.05;font-weight:700;letter-spacing:-.02em;margin-bottom:1.5rem}
+h1 em{font-style:italic;background:var(--grad1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-desc{font-size:.98rem;color:var(--text-muted);line-height:1.8;font-weight:300;margin-bottom:2rem;max-width:480px}
+.hero-chips{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:2.25rem}
+.chip{padding:.28rem .85rem;border-radius:100px;border:1px solid var(--border2);background:rgba(96,165,250,0.05);font-size:.74rem;font-weight:500;color:var(--text-muted);transition:all .2s}
+.chip:hover{border-color:var(--blue);color:var(--blue);background:rgba(96,165,250,0.08)}
+.hero-actions{display:flex;gap:.75rem;flex-wrap:wrap}
+.btn-glow{background:var(--grad1);color:#080d14;border:none;padding:.85rem 2rem;border-radius:100px;font-family:'Outfit',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .3s;box-shadow:0 0 0 rgba(96,165,250,0);position:relative;overflow:hidden}
+.btn-glow::after{content:'';position:absolute;inset:0;background:white;opacity:0;transition:opacity .2s}
+.btn-glow:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(96,165,250,0.35)}
+.btn-glow:hover::after{opacity:.07}
+.btn-ghost{background:transparent;color:var(--text);border:1.5px solid var(--border2);padding:.85rem 2rem;border-radius:100px;font-family:'Outfit',sans-serif;font-size:.9rem;font-weight:500;cursor:pointer;transition:all .3s}
+.btn-ghost:hover{border-color:var(--blue);color:var(--blue);background:rgba(96,165,250,0.05)}
+
+/* HERO ANALYZER CARD */
+.acard{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r3);padding:2rem;position:relative;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5)}
+.acard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--grad1)}
+.acard-title{font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:700;margin-bottom:.25rem}
+.acard-sub{font-size:.8rem;color:var(--text-muted);margin-bottom:1.5rem;line-height:1.6}
+.upload-zone{border:2px dashed var(--border2);border-radius:var(--r2);padding:1.75rem;text-align:center;cursor:pointer;transition:all .3s;position:relative;background:rgba(96,165,250,0.02)}
+.upload-zone:hover,.upload-zone.over{border-color:var(--blue);background:rgba(96,165,250,0.06)}
+.upload-input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upload-preview{width:100%;height:180px;object-fit:cover;border-radius:10px;margin-bottom:1rem;display:none}
+.u-icon{font-size:1.8rem;margin-bottom:.5rem}
+.u-label{font-size:.85rem;color:var(--text-muted)}
+.u-hint{font-size:.72rem;color:var(--text-faint);margin-top:.2rem}
+.quiz-lbl{font-size:.67rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);margin:.9rem 0 .45rem}
+.opts{display:flex;flex-wrap:wrap;gap:.4rem}
+.opt{padding:.32rem .8rem;border-radius:100px;border:1px solid var(--border);background:var(--bg3);color:var(--text-muted);font-size:.74rem;font-weight:500;cursor:pointer;transition:all .2s;font-family:'Outfit',sans-serif}
+.opt:hover{border-color:var(--blue);color:var(--blue)}
+.opt.on{border-color:var(--blue);background:rgba(96,165,250,0.12);color:var(--blue)}
+.analyze-btn{width:100%;margin-top:1.25rem;background:var(--grad1);color:#080d14;border:none;padding:.85rem;border-radius:100px;font-family:'Outfit',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:.5rem}
+.analyze-btn:hover{opacity:.9;transform:translateY(-1px)}
+.analyze-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.result-box{margin-top:1.25rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:1.25rem;display:none;animation:fadeUp .4s ease}
+.result-name{font-family:'Cormorant Garamond',serif;font-size:1.15rem;font-weight:700;color:var(--cyan);margin-bottom:.4rem}
+.result-body{font-size:.83rem;color:var(--text-muted);line-height:1.7}
+.result-pills{display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.75rem}
+.rpill{padding:.25rem .7rem;border-radius:100px;font-size:.7rem;font-weight:600;background:rgba(96,165,250,0.1);color:var(--blue);border:1px solid rgba(96,165,250,0.2)}
+
+/* ── STATS ── */
+.stats-bar{background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:1.5rem 2.5rem;display:flex;justify-content:center;gap:5rem}
+.snum{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:700;background:var(--grad1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
+.slbl{font-size:.68rem;color:var(--text-faint);letter-spacing:.08em;text-transform:uppercase;margin-top:3px}
+
+/* ── SECTION COMMON ── */
+section{padding:6rem 2.5rem}
+.wrap{max-width:1200px;margin:0 auto}
+.sec-eyebrow{display:inline-flex;align-items:center;gap:.5rem;font-size:.67rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--blue);margin-bottom:.6rem}
+.sec-eyebrow::before{content:'';width:1.25rem;height:1px;background:var(--blue)}
+h2{font-family:'Cormorant Garamond',serif;font-size:clamp(1.9rem,3.2vw,2.7rem);font-weight:700;letter-spacing:-.02em;line-height:1.12;margin-bottom:.9rem}
+h2 em{font-style:italic;background:var(--grad1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sec-sub{font-size:.9rem;color:var(--text-muted);line-height:1.75;font-weight:300;max-width:620px;margin-bottom:2.5rem}
+hr.divider{border:none;height:1px;background:linear-gradient(90deg,transparent,var(--border2),transparent);margin:0 2.5rem}
+
+/* ── STYLE DIRECTORY ── */
+.dir-section{background:var(--bg2)}
+.filter-bar{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:2rem}
+.fpill{padding:.38rem 1rem;border-radius:100px;border:1px solid var(--border);background:var(--bg3);color:var(--text-muted);font-size:.76rem;font-weight:500;cursor:pointer;transition:all .25s;font-family:'Outfit',sans-serif}
+.fpill:hover{border-color:var(--border2);color:var(--text)}
+.fpill.active{background:rgba(96,165,250,0.12);color:var(--blue);border-color:var(--blue)}
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:1.25rem}
+
+/* STYLE CARD */
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;transition:transform .35s cubic-bezier(.22,1,.36,1),box-shadow .35s,border-color .35s;cursor:pointer;display:flex;flex-direction:column}
+.sc:hover{transform:translateY(-6px);box-shadow:0 16px 50px rgba(0,0,0,0.5);border-color:var(--border2)}
+.sc.gone{display:none}
+.sc-img{height:230px;position:relative;overflow:hidden;background:var(--bg3);flex-shrink:0}
+.sc-img img{width:100%;height:100%;object-fit:cover;transition:transform .6s cubic-bezier(.22,1,.36,1)}
+.sc:hover .sc-img img{transform:scale(1.07)}
+.sc-loader{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem}
+.sc-spin{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sc-price-tag{position:absolute;top:10px;right:10px;background:rgba(8,13,20,0.88);backdrop-filter:blur(10px);border:1px solid var(--border2);border-radius:100px;padding:.28rem .8rem;font-size:.74rem;font-weight:600;color:var(--cyan)}
+.sc-type-tag{position:absolute;top:10px;left:10px;border-radius:100px;padding:.25rem .7rem;font-size:.63rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase}
+.tt-biz{background:rgba(96,165,250,0.2);color:var(--blue)}
+.tt-col{background:rgba(45,212,191,0.2);color:var(--teal)}
+.tt-mix{background:rgba(167,139,250,0.2);color:var(--violet)}
+
+/* CARD BODY */
+.sc-body{padding:1.25rem;flex:1;display:flex;flex-direction:column}
+.sc-tags{display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.55rem}
+.stag{font-size:.62rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:.2rem .55rem;border-radius:6px}
+.stag-biz{background:rgba(96,165,250,0.1);color:var(--blue)}
+.stag-col{background:rgba(45,212,191,0.1);color:var(--teal)}
+.stag-age{background:rgba(251,191,36,0.1);color:var(--gold)}
+.sc-title{font-family:'Cormorant Garamond',serif;font-size:1.18rem;font-weight:700;margin-bottom:.3rem;line-height:1.25}
+.sc-desc{font-size:.8rem;color:var(--text-muted);line-height:1.6;font-weight:300;flex:1}
+
+/* PRICE TABLE */
+.sc-prices{margin-top:.9rem;padding-top:.9rem;border-top:1px solid var(--border)}
+.sc-prices-lbl{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);margin-bottom:.5rem}
+.sc-price-row{display:flex;justify-content:space-between;font-size:.78rem;padding:.2rem 0;border-bottom:1px solid rgba(96,165,250,0.05)}
+.sc-price-row:last-of-type{border-bottom:none}
+.sc-price-row span:last-child{font-weight:600;color:var(--text)}
+.sc-total-row{display:flex;justify-content:space-between;align-items:center;margin-top:.6rem;padding-top:.55rem;border-top:1px dashed var(--border)}
+.sc-total-lbl{font-size:.76rem;font-weight:500;color:var(--text-muted)}
+.sc-total-val{font-family:'Cormorant Garamond',serif;font-size:1.05rem;font-weight:700;color:var(--cyan)}
+
+/* SHOP LINKS */
+.sc-shops{margin-top:.9rem;padding-top:.9rem;border-top:1px solid var(--border)}
+.sc-shops-lbl{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);margin-bottom:.55rem}
+.shop-chips{display:flex;flex-wrap:wrap;gap:.4rem}
+.shop-chip{display:inline-flex;align-items:center;gap:.35rem;padding:.28rem .75rem;border-radius:100px;background:var(--bg3);border:1px solid var(--border);color:var(--text-muted);font-size:.72rem;font-weight:600;text-decoration:none;transition:all .25s;cursor:pointer}
+.shop-chip:hover{border-color:var(--blue);color:var(--blue);background:rgba(96,165,250,0.06);transform:translateY(-1px)}
+.shop-chip .dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
+
+/* CARD FOOTER */
+.sc-footer{padding:.85rem 1.25rem;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:rgba(96,165,250,0.015)}
+.sc-range{font-size:.74rem;color:var(--text-faint)}
+.view-more{background:none;border:none;font-family:'Outfit',sans-serif;font-size:.76rem;font-weight:600;color:var(--blue);cursor:pointer;display:flex;align-items:center;gap:4px;transition:gap .25s,color .25s}
+.view-more:hover{gap:8px;color:var(--cyan)}
+.view-more::after{content:'→';font-size:.8rem}
+
+/* ── DETAIL PANEL ── */
+.overlay{display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.8);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:1.5rem}
+.overlay.open{display:flex;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.dp{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r3);max-width:760px;width:100%;max-height:90vh;overflow-y:auto;animation:slideUp .35s cubic-bezier(.22,1,.36,1)}
+@keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+.dp-hero{height:300px;position:relative;background:var(--bg3);border-radius:var(--r3) var(--r3) 0 0;overflow:hidden}
+.dp-hero img{width:100%;height:100%;object-fit:cover}
+.dp-close{position:absolute;top:14px;right:14px;background:rgba(8,13,20,.85);border:1px solid var(--border);color:var(--text);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.9rem;z-index:2;transition:all .2s}
+.dp-close:hover{background:var(--surface);border-color:var(--border2)}
+.dp-body{padding:2rem}
+.dp-title{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:700;margin-bottom:.4rem}
+.dp-desc{font-size:.88rem;color:var(--text-muted);line-height:1.75;margin-bottom:1.5rem}
+.dp-sec{font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);margin:1.5rem 0 .7rem;display:flex;align-items:center;gap:.5rem}
+.dp-sec::after{content:'';flex:1;height:1px;background:var(--border)}
+.out-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.orow{background:var(--bg3);border-radius:10px;padding:.75rem 1rem;display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);transition:border-color .2s}
+.orow:hover{border-color:var(--border2)}
+.orow-name{font-size:.84rem;color:var(--text-muted)}
+.orow-price{font-size:.84rem;font-weight:600;color:var(--text)}
+.total-band{background:var(--grad1);border-radius:12px;padding:.9rem 1.25rem;display:flex;justify-content:space-between;align-items:center;margin-top:.75rem}
+.total-band-lbl{font-size:.8rem;color:rgba(8,13,20,.7);font-weight:600}
+.total-band-val{font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:700;color:#080d14}
+.dp-shops{display:flex;flex-wrap:wrap;gap:.5rem}
+.dp-shop-btn{display:inline-flex;align-items:center;gap:.5rem;padding:.45rem 1rem;border-radius:100px;background:var(--bg3);border:1px solid var(--border);color:var(--text-muted);font-size:.8rem;font-weight:600;text-decoration:none;transition:all .25s;font-family:'Outfit',sans-serif}
+.dp-shop-btn:hover{border-color:var(--blue);color:var(--blue);background:rgba(96,165,250,0.07);transform:translateY(-2px);box-shadow:0 4px 16px rgba(96,165,250,0.15)}
+.dp-shop-btn svg{width:14px;height:14px;opacity:.6}
+.tips-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.tip-block{background:var(--bg3);border-radius:10px;padding:.9rem 1rem;border:1px solid var(--border)}
+.tip-block strong{display:block;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--blue);margin-bottom:.3rem}
+.tip-block p{font-size:.82rem;color:var(--text-muted);line-height:1.55}
+
+/* ── CLOSET ── */
+.closet-sect{background:var(--bg3)}
+.closet-wrap{display:grid;grid-template-columns:1fr 1.1fr;gap:2rem;align-items:start}
+.ccard{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r3);padding:2rem;position:relative;overflow:hidden}
+.ccard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--grad2)}
+.ccat{margin-bottom:1.1rem}
+.ccat-lbl{font-size:.65rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);margin-bottom:.45rem;display:flex;align-items:center;gap:.35rem}
+.ccat-lbl span{font-size:.9rem}
+.cinput-row{display:flex;gap:.4rem;margin-bottom:.4rem}
+.cinput{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.5rem .85rem;font-family:'Outfit',sans-serif;font-size:.82rem;color:var(--text);outline:none;transition:border-color .25s}
+.cinput:focus{border-color:var(--blue)}
+.cinput::placeholder{color:var(--text-faint)}
+.cadd{background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:var(--blue);border-radius:8px;padding:.48rem .85rem;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap;font-family:'Outfit',sans-serif}
+.cadd:hover{background:rgba(96,165,250,0.18)}
+.ctags{display:flex;flex-wrap:wrap;gap:.35rem;min-height:24px}
+.ctag{display:inline-flex;align-items:center;gap:.3rem;padding:.24rem .7rem;background:rgba(45,212,191,0.08);border:1px solid rgba(45,212,191,0.2);border-radius:100px;font-size:.72rem;color:var(--teal)}
+.ctag button{background:none;border:none;color:var(--text-faint);cursor:pointer;line-height:1;font-size:.9rem;padding:0;transition:color .2s}
+.ctag button:hover{color:var(--rose)}
+.gen-btn{width:100%;margin-top:1.5rem;background:var(--grad2);color:#080d14;border:none;padding:.88rem;border-radius:100px;font-family:'Outfit',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:.5rem}
+.gen-btn:hover{opacity:.9;transform:translateY(-1px)}
+.gen-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.cresult{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r3);padding:2rem;min-height:320px;display:flex;flex-direction:column}
+.cresult-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6rem;color:var(--text-faint);text-align:center}
+.cresult-empty .big{font-size:2.5rem}
+.outfit-show{display:none;animation:fadeUp .4s ease}
+.outfit-show.on{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.outfit-name{font-family:'Cormorant Garamond',serif;font-size:1.35rem;font-weight:700;color:var(--cyan);margin-bottom:.4rem}
+.outfit-desc{font-size:.84rem;color:var(--text-muted);line-height:1.7;margin-bottom:1rem}
+.opiece{display:flex;align-items:center;gap:.55rem;font-size:.84rem;color:var(--text-muted);padding:.35rem 0;border-bottom:1px solid var(--border)}
+.opiece:last-child{border-bottom:none}
+.opiece::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--blue);flex-shrink:0}
+.otip{background:rgba(96,165,250,0.06);border:1px solid var(--border);border-radius:10px;padding:.9rem 1rem;margin-top:1rem;font-size:.82rem;color:var(--text-muted);line-height:1.6}
+.otip strong{color:var(--blue);display:block;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem}
+
+/* ── BEAUTY ── */
+.beauty-sect{background:var(--bg2)}
+.beauty-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.bcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden}
+.bcard-head{padding:1.4rem 1.75rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.7rem}
+.bcard-icon{font-size:1.4rem}
+.bcard-title{font-family:'Cormorant Garamond',serif;font-size:1.25rem;font-weight:700}
+.bcard-sub{font-size:.74rem;color:var(--text-muted);margin-top:.1rem}
+.btabs{display:flex;padding:.9rem 1.75rem .4rem;gap:.35rem;border-bottom:1px solid var(--border)}
+.btab{padding:.35rem .9rem;border-radius:100px;font-size:.74rem;font-weight:500;cursor:pointer;transition:all .2s;font-family:'Outfit',sans-serif;border:none;background:none;color:var(--text-faint)}
+.btab:hover{color:var(--text-muted)}
+.btab.on{background:rgba(96,165,250,0.1);color:var(--blue)}
+.bpane{display:none;padding:1.25rem 1.75rem 1.75rem;animation:fadeUp .3s ease}
+.bpane.on{display:block}
+.bitem{margin-bottom:1.1rem;padding-bottom:1.1rem;border-bottom:1px solid var(--border)}
+.bitem:last-child{margin:0;padding:0;border:none}
+.bitem-title{font-weight:600;font-size:.9rem;margin-bottom:.25rem}
+.bitem-desc{font-size:.8rem;color:var(--text-muted);line-height:1.65}
+.bitem-tags{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.4rem}
+.btag{font-size:.66rem;font-weight:600;padding:.2rem .6rem;border-radius:100px;background:rgba(167,139,250,0.1);color:var(--violet);border:1px solid rgba(167,139,250,0.18)}
+
+/* ── LOOKBOOK ── */
+.lbook-sect{background:var(--bg)}
+.lbook-grid{display:grid;grid-template-columns:2fr 1fr 1fr;grid-template-rows:auto auto;gap:1rem;margin-top:2.5rem}
+.ltile{border-radius:var(--r2);padding:1.75rem;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;min-height:210px;border:1px solid var(--border);transition:transform .35s cubic-bezier(.22,1,.36,1),box-shadow .35s}
+.ltile:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,0.5)}
+.ltile.tall{grid-row:span 2;min-height:440px}
+.ltile-tag{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.28rem .72rem;border-radius:100px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);display:inline-block;margin-bottom:.55rem}
+.ltile-title{font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:700;color:#fff;line-height:1.2}
+.ltile-sub{font-size:.76rem;color:rgba(255,255,255,.55);margin-top:.3rem}
+.lt-a{background:linear-gradient(160deg,#071a2e,#0e3060)}
+.lt-b{background:linear-gradient(160deg,#071e1a,#0e3830)}
+.lt-c{background:linear-gradient(160deg,#130e2a,#251560)}
+.lt-d{background:linear-gradient(160deg,#0e1a22,#103a50)}
+.lt-e{background:linear-gradient(160deg,#150e2a,#2d1860)}
+
+/* ── AGE GUIDE ── */
+.age-sect{background:var(--bg3)}
+.age-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:2.5rem}
+.agcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);padding:1.75rem;transition:border-color .3s,transform .3s cubic-bezier(.22,1,.36,1)}
+.agcard:hover{border-color:var(--border2);transform:translateY(-3px)}
+.agcard-num{font-family:'Cormorant Garamond',serif;font-size:2.1rem;font-weight:700;margin-bottom:.15rem}
+.agcard-lbl{font-size:.66rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-faint);margin-bottom:.9rem}
+.agcard-list{list-style:none;display:flex;flex-direction:column;gap:.45rem}
+.agcard-list li{font-size:.82rem;color:var(--text-muted);display:flex;gap:.4rem;line-height:1.5}
+.agcard-list li::before{content:'›';color:var(--blue);flex-shrink:0;font-weight:700}
+
+/* ── FOOTER ── */
+footer{background:var(--bg);border-top:1px solid var(--border);padding:3rem 2.5rem;text-align:center}
+.footer-logo{font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:700;margin-bottom:.6rem}
+.footer-logo em{font-style:italic;background:var(--grad1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+footer p{font-size:.8rem;color:var(--text-faint)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:1.75rem;right:1.75rem;background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:.8rem 1.25rem;font-size:.82rem;color:var(--text);z-index:1000;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* ── LOADING SPINNER INLINE ── */
+.spin{display:inline-block;width:16px;height:16px;border:2px solid rgba(8,13,20,.3);border-top-color:#080d14;border-radius:50%;animation:spin .65s linear infinite}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  nav{padding:0 1.25rem}.nav-links{display:none}
+  .hero-inner,.closet-wrap,.beauty-grid,.lbook-grid,.age-grid{grid-template-columns:1fr}
+  section{padding:4rem 1.25rem}.stats-bar{gap:2rem;padding:1.25rem}.hero{padding:80px 1.25rem 3rem}
+  .ltile.tall{min-height:250px}.out-grid,.tips-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="nav">
+  <a class="logo" href="#">Style<em>Flow</em></a>
+  <ul class="nav-links">
+    <li><a href="#analyzer">Analyzer</a></li>
+    <li><a href="#directory">Directory</a></li>
+    <li><a href="#closet">My Closet</a></li>
+    <li><a href="#beauty">Beauty</a></li>
+    <li><a href="#lookbook">Lookbook</a></li>
+  </ul>
+  <button class="nav-pill" onclick="smoothTo('directory')">Browse Styles</button>
+</nav>
+
+<!-- ══════════════ HERO / ANALYZER ══════════════ -->
+<section class="hero" id="analyzer">
+  <div class="hero-noise"></div>
+  <div class="hero-orb1"></div>
+  <div class="hero-orb2"></div>
+  <div class="hero-grid-lines"></div>
+  <div class="hero-inner">
+    <div class="hero-left">
+      <div class="hero-eyebrow reveal">✦ AI-Powered Style Platform</div>
+      <h1 class="reveal reveal-delay-1">Your look,<br><em>elevated</em><br>by AI.</h1>
+      <p class="hero-desc reveal reveal-delay-2">Upload a photo, share your vibe, and get a personalized style profile with outfit ideas, shops to buy from, beauty tips, and more — for ages 16 to 64.</p>
+      <div class="hero-chips reveal reveal-delay-3">
+        <span class="chip">📸 Photo Analysis</span>
+        <span class="chip">🛍 Shop Links</span>
+        <span class="chip">👔 Business</span>
+        <span class="chip">🎓 College</span>
+        <span class="chip">💰 Prices</span>
+        <span class="chip">👗 Closet AI</span>
+        <span class="chip">💄 Beauty</span>
+      </div>
+      <div class="hero-actions reveal reveal-delay-4">
+        <button class="btn-glow" onclick="smoothTo('directory')">Browse Styles & Shops</button>
+        <button class="btn-ghost" onclick="smoothTo('closet')">Build My Outfit</button>
+      </div>
+    </div>
+
+    <!-- ANALYZER CARD -->
+    <div class="acard reveal reveal-delay-2">
+      <div class="acard-title">✦ Style Analyzer</div>
+      <div class="acard-sub">Upload your photo + select your vibe → get a personalized AI style profile.</div>
+      <div class="upload-zone" id="uzone">
+        <input type="file" class="upload-input" id="photoFile" accept="image/*" onchange="onPhotoUpload(event)">
+        <img id="uprev" class="upload-preview" alt="Your photo">
+        <div id="ucontent">
+          <div class="u-icon">📸</div>
+          <div class="u-label">Drop your photo or click to upload</div>
+          <div class="u-hint">Selfie, outfit pic, or full-body shot</div>
+        </div>
+      </div>
+      <div class="quiz-lbl">Your Vibe <span style="color:var(--text-faint);font-weight:400;text-transform:none;letter-spacing:0">(pick all)</span></div>
+      <div class="opts" id="vibeOpts">
+        <button class="opt" onclick="tog(this)">Classic</button>
+        <button class="opt" onclick="tog(this)">Streetwear</button>
+        <button class="opt" onclick="tog(this)">Minimalist</button>
+        <button class="opt" onclick="tog(this)">Bold</button>
+        <button class="opt" onclick="tog(this)">Preppy</button>
+        <button class="opt" onclick="tog(this)">Smart Casual</button>
+        <button class="opt" onclick="tog(this)">Artsy</button>
+        <button class="opt" onclick="tog(this)">Athleisure</button>
+      </div>
+      <div class="quiz-lbl">Setting</div>
+      <div class="opts" id="settingOpts">
+        <button class="opt" onclick="tog(this)">Business</button>
+        <button class="opt" onclick="tog(this)">College</button>
+        <button class="opt" onclick="tog(this)">Both</button>
+        <button class="opt" onclick="tog(this)">Events</button>
+      </div>
+      <div class="quiz-lbl">Age Group</div>
+      <div class="opts" id="ageOpts">
+        <button class="opt" onclick="solo(this,'ageOpts')">16–19</button>
+        <button class="opt" onclick="solo(this,'ageOpts')">20s</button>
+        <button class="opt" onclick="solo(this,'ageOpts')">30s–40s</button>
+        <button class="opt" onclick="solo(this,'ageOpts')">50s–64</button>
+      </div>
+      <button class="analyze-btn" id="aBtn" onclick="runAnalyze()">
+        <span id="aBtnTxt">✦ Analyze My Style</span>
+      </button>
+      <div class="result-box" id="resultBox">
+        <div class="result-name" id="rName"></div>
+        <div class="result-body" id="rBody"></div>
+        <div class="result-pills" id="rPills"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stat reveal"><div class="snum">9</div><div class="slbl">Style Profiles</div></div>
+  <div class="stat reveal reveal-delay-1"><div class="snum">50+</div><div class="slbl">Shop Links</div></div>
+  <div class="stat reveal reveal-delay-2"><div class="snum">16–64</div><div class="slbl">Age Range</div></div>
+  <div class="stat reveal reveal-delay-3"><div class="snum">$30–$1400</div><div class="slbl">Price Range</div></div>
+</div>
+
+<hr class="divider">
+
+<!-- ══════════════ STYLE DIRECTORY ══════════════ -->
+<section class="dir-section" id="directory">
+  <div class="wrap">
+    <div class="sec-eyebrow reveal">Style Directory</div>
+    <h2 class="reveal">Browse <em>Looks,</em> Prices & Shops</h2>
+    <p class="sec-sub reveal">Every style comes with a full outfit breakdown, real price ranges, and direct links to trusted shops where you can buy each piece.</p>
+    <div class="filter-bar reveal">
+      <button class="fpill active" onclick="doFilter('all',this)">All Styles</button>
+      <button class="fpill" onclick="doFilter('business',this)">Business</button>
+      <button class="fpill" onclick="doFilter('college',this)">College</button>
+      <button class="fpill" onclick="doFilter('teen',this)">Teen (16–19)</button>
+      <button class="fpill" onclick="doFilter('twenties',this)">20s</button>
+      <button class="fpill" onclick="doFilter('thirties',this)">30s–40s</button>
+      <button class="fpill" onclick="doFilter('mature',this)">50s–64</button>
+    </div>
+    <div class="cards-grid" id="cGrid"></div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ══════════════ CLOSET BUILDER ══════════════ -->
+<section class="closet-sect" id="closet">
+  <div class="wrap">
+    <div class="sec-eyebrow reveal">Virtual Closet</div>
+    <h2 class="reveal">Create an <em>Outfit</em> from Your Closet</h2>
+    <p class="sec-sub reveal">Enter the clothes you already own — our AI builds the best possible outfit from what you have and tells you how to wear it.</p>
+    <div class="closet-wrap">
+      <div class="ccard reveal">
+        <div style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:700;margin-bottom:.2rem">Your Wardrobe</div>
+        <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:1.5rem">Add pieces you own — then hit Create</div>
+        <div class="ccat"><div class="ccat-lbl"><span>👕</span> Tops</div><div class="cinput-row"><input class="cinput" id="tops-in" placeholder="e.g. white button-down shirt" onkeydown="if(event.key==='Enter')addC('tops')"><button class="cadd" onclick="addC('tops')">+ Add</button></div><div class="ctags" id="tops-tags"></div></div>
+        <div class="ccat"><div class="ccat-lbl"><span>👖</span> Bottoms</div><div class="cinput-row"><input class="cinput" id="bottoms-in" placeholder="e.g. navy slim chinos" onkeydown="if(event.key==='Enter')addC('bottoms')"><button class="cadd" onclick="addC('bottoms')">+ Add</button></div><div class="ctags" id="bottoms-tags"></div></div>
+        <div class="ccat"><div class="ccat-lbl"><span>👟</span> Shoes</div><div class="cinput-row"><input class="cinput" id="shoes-in" placeholder="e.g. white leather sneakers" onkeydown="if(event.key==='Enter')addC('shoes')"><button class="cadd" onclick="addC('shoes')">+ Add</button></div><div class="ctags" id="shoes-tags"></div></div>
+        <div class="ccat"><div class="ccat-lbl"><span>🧥</span> Outerwear & Extras</div><div class="cinput-row"><input class="cinput" id="outer-in" placeholder="e.g. charcoal blazer" onkeydown="if(event.key==='Enter')addC('outer')"><button class="cadd" onclick="addC('outer')">+ Add</button></div><div class="ctags" id="outer-tags"></div></div>
+        <button class="gen-btn" id="genBtn" onclick="genOutfit()"><span id="genTxt">✦ Create My Outfit</span></button>
+      </div>
+      <div class="cresult reveal reveal-delay-1">
+        <div class="cresult-empty" id="cempty"><div class="big">✦</div><div style="font-size:.9rem;font-weight:500;color:var(--text-muted)">Your AI-crafted outfit appears here</div><div style="font-size:.78rem">Add clothes above and hit Create</div></div>
+        <div class="outfit-show" id="oshow">
+          <div class="outfit-name" id="oname"></div>
+          <div class="outfit-desc" id="odesc"></div>
+          <div class="dp-sec">Recommended Pieces</div>
+          <div id="opieces"></div>
+          <div class="otip" id="otip"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ══════════════ BEAUTY ══════════════ -->
+<section class="beauty-sect" id="beauty">
+  <div class="wrap">
+    <div class="sec-eyebrow reveal">Beauty & Grooming</div>
+    <h2 class="reveal">Makeup Tips & <em>Haircuts</em></h2>
+    <p class="sec-sub reveal">Complete the look — cool-toned makeup for every age and expert haircut guidance for men.</p>
+    <div class="beauty-grid">
+
+      <div class="bcard reveal">
+        <div class="bcard-head"><div class="bcard-icon">💄</div><div><div class="bcard-title">Makeup by Age</div><div class="bcard-sub">Cool-toned looks for every decade</div></div></div>
+        <div class="btabs" id="mkTabs">
+          <button class="btab on" onclick="swTab('mk','teen',this)">16–19</button>
+          <button class="btab" onclick="swTab('mk','20s',this)">20s</button>
+          <button class="btab" onclick="swTab('mk','30s',this)">30s–40s</button>
+          <button class="btab" onclick="swTab('mk','50s',this)">50s–64</button>
+        </div>
+        <div class="bpane on" id="mk-teen">
+          <div class="bitem"><div class="bitem-title">Dewy Skin Base</div><div class="bitem-desc">Light coverage BB cream or tinted moisturizer. Let your natural texture show — heavy foundation ages prematurely at this stage.</div><div class="bitem-tags"><span class="btag">Everyday</span><span class="btag">Cool Tone</span></div></div>
+          <div class="bitem"><div class="bitem-title">Graphic Liner / Glossy Lids</div><div class="bitem-desc">Try a thin blue or white liner wing, or a sheer icy-rose gloss on lids. Cool blues and silvers are on-trend and age-appropriate.</div><div class="bitem-tags"><span class="btag">Statement</span><span class="btag">Blue Tones</span></div></div>
+          <div class="bitem"><div class="bitem-title">Tinted Lip Balm</div><div class="bitem-desc">Dusty mauve or cool berry balm adds color without heaviness — perfect for campus or casual settings.</div><div class="bitem-tags"><span class="btag">Effortless</span><span class="btag">Berry</span></div></div>
+        </div>
+        <div class="bpane" id="mk-20s">
+          <div class="bitem"><div class="bitem-title">Skin-Perfecting Foundation</div><div class="bitem-desc">Build a flawless base with buildable coverage. Set with a cool translucent powder for all-day longevity.</div><div class="bitem-tags"><span class="btag">Professional</span><span class="btag">Longwear</span></div></div>
+          <div class="bitem"><div class="bitem-title">Cool Smoky Eye</div><div class="bitem-desc">Slate grey or navy shadow blended at the lash line creates depth without warmth. Pair with a cool taupe crease.</div><div class="bitem-tags"><span class="btag">Evening</span><span class="btag">Navy & Slate</span></div></div>
+          <div class="bitem"><div class="bitem-title">Mauve or Wine Lip</div><div class="bitem-desc">Cool-toned berry or dusty wine reads professional and polished — ideal for interviews and campus events.</div><div class="bitem-tags"><span class="btag">Office</span><span class="btag">Interview</span></div></div>
+        </div>
+        <div class="bpane" id="mk-30s">
+          <div class="bitem"><div class="bitem-title">Hydrating Serum Foundation</div><div class="bitem-desc">Switch to a foundation with hyaluronic acid. Avoid matte — a natural satin glow looks more modern and flattering.</div><div class="bitem-tags"><span class="btag">Skin-Care</span><span class="btag">Satin Finish</span></div></div>
+          <div class="bitem"><div class="bitem-title">Defined Brow + Lift Concealer</div><div class="bitem-desc">A cool-ash brow frames the face. Apply concealer just under the brow bone for an instant, natural eye lift.</div><div class="bitem-tags"><span class="btag">Face Frame</span><span class="btag">Lift Effect</span></div></div>
+          <div class="bitem"><div class="bitem-title">Rose-Nude or Plum Lip</div><div class="bitem-desc">A cool rose-nude liner slightly overlined creates a full, polished look for the boardroom or leadership meetings.</div><div class="bitem-tags"><span class="btag">Executive</span><span class="btag">Polished</span></div></div>
+        </div>
+        <div class="bpane" id="mk-50s">
+          <div class="bitem"><div class="bitem-title">Luminous, Light Coverage</div><div class="bitem-desc">Heavy coverage settles into lines — opt for a skin tint with SPF and a light setting powder at the T-zone only.</div><div class="bitem-tags"><span class="btag">Luminous</span><span class="btag">SPF</span></div></div>
+          <div class="bitem"><div class="bitem-title">Soft Liner & Mascara Focus</div><div class="bitem-desc">Define lashes with navy or dark brown mascara and a cool-taupe liner tight-lined at the upper lash base.</div><div class="bitem-tags"><span class="btag">Defined Eyes</span><span class="btag">Effortless</span></div></div>
+          <div class="bitem"><div class="bitem-title">Classic Cool Red or Berry</div><div class="bitem-desc">A blue-based red or cool raspberry creates instant confidence and authority. Blot twice to avoid feathering.</div><div class="bitem-tags"><span class="btag">Power Look</span><span class="btag">Timeless</span></div></div>
+        </div>
+      </div>
+
+      <div class="bcard reveal reveal-delay-1">
+        <div class="bcard-head"><div class="bcard-icon">✂️</div><div><div class="bcard-title">Haircuts for Guys</div><div class="bcard-sub">By age & lifestyle context</div></div></div>
+        <div class="btabs" id="hrTabs">
+          <button class="btab on" onclick="swTab('hr','teen',this)">16–19</button>
+          <button class="btab" onclick="swTab('hr','20s',this)">20s</button>
+          <button class="btab" onclick="swTab('hr','30s',this)">30s–40s</button>
+          <button class="btab" onclick="swTab('hr','50s',this)">50s–64</button>
+        </div>
+        <div class="bpane on" id="hr-teen">
+          <div class="bitem"><div class="bitem-title">Textured Crop with Fade</div><div class="bitem-desc">Mid skin fade on sides with a choppy textured top. Run a small amount of matte clay through for definition.</div><div class="bitem-tags"><span class="btag">Streetwear</span><span class="btag">Campus</span></div></div>
+          <div class="bitem"><div class="bitem-title">Edgar / French Crop</div><div class="bitem-desc">Blunt fringe with tight fade. Clean, bold, and current — pairs perfectly with oversized fits and streetwear.</div><div class="bitem-tags"><span class="btag">Trending</span><span class="btag">Bold</span></div></div>
+          <div class="bitem"><div class="bitem-title">Curly Top + Low Fade</div><div class="bitem-desc">Leave the top full and defined with a low skin fade on sides. Use curl cream to define and reduce frizz.</div><div class="bitem-tags"><span class="btag">Natural Texture</span><span class="btag">Versatile</span></div></div>
+        </div>
+        <div class="bpane" id="hr-20s">
+          <div class="bitem"><div class="bitem-title">Slick Back Undercut</div><div class="bitem-desc">Disconnected undercut with longer top slicked back or to the side. Works for the office and after-hours.</div><div class="bitem-tags"><span class="btag">Business</span><span class="btag">Smart</span></div></div>
+          <div class="bitem"><div class="bitem-title">Modern Quiff</div><div class="bitem-desc">Short sides with volume swept upward. Use medium-hold pomade for structure with movement.</div><div class="bitem-tags"><span class="btag">Office</span><span class="btag">Versatile</span></div></div>
+          <div class="bitem"><div class="bitem-title">Buzz with Shape-Up</div><div class="bitem-desc">Crisp buzz cut with precise line-up at temples and neckline. Low maintenance, always sharp.</div><div class="bitem-tags"><span class="btag">Minimal</span><span class="btag">Always Sharp</span></div></div>
+        </div>
+        <div class="bpane" id="hr-30s">
+          <div class="bitem"><div class="bitem-title">Classic Side Part</div><div class="bitem-desc">A timeless side part combed clean signals executive polish. Light pomade for natural shine.</div><div class="bitem-tags"><span class="btag">Executive</span><span class="btag">Boardroom</span></div></div>
+          <div class="bitem"><div class="bitem-title">Ivy League Taper</div><div class="bitem-desc">Short sides, slightly longer on top with a natural part. Works across all settings from business to weekend.</div><div class="bitem-tags"><span class="btag">All-Around</span><span class="btag">Professional</span></div></div>
+          <div class="bitem"><div class="bitem-title">Styled Stubble</div><div class="bitem-desc">A well-maintained 3–5mm beard adds maturity. Keep neckline and cheek line crisp clean — use beard oil daily.</div><div class="bitem-tags"><span class="btag">Mature</span><span class="btag">Authority</span></div></div>
+        </div>
+        <div class="bpane" id="hr-50s">
+          <div class="bitem"><div class="bitem-title">Distinguished Silver</div><div class="bitem-desc">Embrace natural grey — a classic taper or side part in grey reads enormously powerful in leadership settings.</div><div class="bitem-tags"><span class="btag">Power Grey</span><span class="btag">Leadership</span></div></div>
+          <div class="bitem"><div class="bitem-title">Short Classic Taper</div><div class="bitem-desc">Tight and controlled all around, slightly longer on top. Fresh cut every 3–4 weeks maintains crisp lines.</div><div class="bitem-tags"><span class="btag">Timeless</span><span class="btag">Formal</span></div></div>
+          <div class="bitem"><div class="bitem-title">Clean Shave or Trimmed Beard</div><div class="bitem-desc">A clean shave is perennially authoritative. If keeping a beard, trim to max 5mm with silver-specific beard balm.</div><div class="bitem-tags"><span class="btag">Authority</span><span class="btag">Distinguished</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ LOOKBOOK ══════════════ -->
+<section class="lbook-sect" id="lookbook">
+  <div class="wrap">
+    <div class="sec-eyebrow reveal">Lookbook</div>
+    <h2 class="reveal">Styled for every <em>chapter</em></h2>
+    <div class="lbook-grid">
+      <div class="ltile lt-a tall reveal"><span class="ltile-tag">Business · All Ages</span><div class="ltile-title">The Corporate Power Look</div><div class="ltile-sub">Tailored suit · Dress shirt · Oxford shoes · Watch</div></div>
+      <div class="ltile lt-b reveal reveal-delay-1"><span class="ltile-tag">College · 16–22</span><div class="ltile-title">Campus Every Day</div><div class="ltile-sub">Hoodie · Jeans · Clean sneakers</div></div>
+      <div class="ltile lt-c reveal reveal-delay-2"><span class="ltile-tag">Business Casual · 23–35</span><div class="ltile-title">Hybrid Office Ready</div><div class="ltile-sub">Chinos · Oxford shirt · Loafers</div></div>
+      <div class="ltile lt-d reveal reveal-delay-1"><span class="ltile-tag">Smart Casual · 36–50</span><div class="ltile-title">Weekend Sharp</div><div class="ltile-sub">Dark jeans · Polo · Leather boots</div></div>
+      <div class="ltile lt-e reveal reveal-delay-2"><span class="ltile-tag">Formal · 50–64</span><div class="ltile-title">Distinguished & Timeless</div><div class="ltile-sub">Three-piece · Pocket square · Cap-toe Oxfords</div></div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ══════════════ AGE GUIDE ══════════════ -->
+<section class="age-sect" id="age">
+  <div class="wrap">
+    <div class="sec-eyebrow reveal">By Age</div>
+    <h2 class="reveal">Every decade, <em>reimagined</em></h2>
+    <div class="age-grid">
+      <div class="agcard reveal"><div class="agcard-num" style="background:var(--grad1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">16–25</div><div class="agcard-lbl">Discovery Era</div><ul class="agcard-list"><li>Experiment freely — bold choices now</li><li>Build 2–3 quality basics first</li><li>Cool tones: ice blue, slate, silver</li><li>Budget: $80–$200 per outfit</li><li>Shop: ASOS, Zara, H&M, Uniqlo</li></ul></div>
+      <div class="agcard reveal reveal-delay-1"><div class="agcard-num" style="background:var(--grad3);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">26–40</div><div class="agcard-lbl">Building Era</div><ul class="agcard-list"><li>Curate intentionally — quality over quantity</li><li>Capsule wardrobe: 12–15 pieces</li><li>Cool tones: navy, charcoal, teal</li><li>Budget: $200–$450 per outfit</li><li>Shop: Banana Republic, COS, J.Crew</li></ul></div>
+      <div class="agcard reveal reveal-delay-2"><div class="agcard-num" style="background:var(--grad2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">41–64</div><div class="agcard-lbl">Mastery Era</div><ul class="agcard-list"><li>Timeless over trendy, always</li><li>Quality fabrics signal authority</li><li>Cool tones: midnight, steel, lavender</li><li>Budget: $400–$900+ per outfit</li><li>Shop: Ralph Lauren, Brooks Brothers, Nordstrom</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">Style<em>Flow</em></div>
+  <p>AI-powered style guidance for business & college, ages 16–64.</p>
+  <p style="margin-top:.5rem;font-size:.74rem;color:var(--text-faint);opacity:.5">© 2026 StyleFlow — Dress for where you're going.</p>
+</footer>
+
+<!-- DETAIL OVERLAY -->
+<div class="overlay" id="overlay" onclick="closeOv(event)">
+  <div class="dp" id="dp">
+    <div class="dp-hero" id="dpHero">
+      <div id="dpLoad" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6rem;background:var(--bg3)">
+        <div class="sc-spin" style="width:26px;height:26px"></div>
+        <div style="font-size:.75rem;color:var(--text-faint)">Loading image…</div>
+      </div>
+      <button class="dp-close" onclick="document.getElementById('overlay').classList.remove('open')">✕</button>
+    </div>
+    <div class="dp-body">
+      <div id="dpTags" class="sc-tags" style="margin-bottom:.55rem"></div>
+      <div class="dp-title" id="dpTitle"></div>
+      <div class="dp-desc" id="dpDesc"></div>
+      <div class="dp-sec">Outfit Breakdown & Prices</div>
+      <div class="out-grid" id="dpOutfit"></div>
+      <div class="total-band" id="dpTotal" style="display:none"><div><div class="total-band-lbl">Full Outfit Estimate</div></div><div class="total-band-val" id="dpTotalVal"></div></div>
+      <div class="dp-sec">Where to Shop</div>
+      <div class="dp-shops" id="dpShops"></div>
+      <div class="dp-sec">Style Tips</div>
+      <div class="tips-grid" id="dpTips"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══ SHOP DATA ═══
+const SHOPS = {
+  budget:[
+    {name:'ASOS',url:'https://www.asos.com',color:'#e63946'},
+    {name:'H&M',url:'https://www.hm.com',color:'#e63946'},
+    {name:'Zara',url:'https://www.zara.com',color:'#222'},
+    {name:'Uniqlo',url:'https://www.uniqlo.com',color:'#e63946'},
+    {name:'Target',url:'https://www.target.com',color:'#cc0000'},
+    {name:'Shein',url:'https://www.shein.com',color:'#000'},
+  ],
+  mid:[
+    {name:'Banana Republic',url:'https://bananarepublic.gap.com',color:'#1a1a1a'},
+    {name:'J.Crew',url:'https://www.jcrew.com',color:'#1a1a1a'},
+    {name:'COS',url:'https://www.cosstores.com',color:'#222'},
+    {name:'Abercrombie',url:'https://www.abercrombie.com',color:'#1a1a1a'},
+    {name:'Mango',url:'https://www.mango.com',color:'#1a1a1a'},
+    {name:'Club Monaco',url:'https://www.clubmonaco.com',color:'#222'},
+  ],
+  premium:[
+    {name:'Ralph Lauren',url:'https://www.ralphlauren.com',color:'#002868'},
+    {name:'Brooks Brothers',url:'https://www.brooksbrothers.com',color:'#002868'},
+    {name:'Nordstrom',url:'https://www.nordstrom.com',color:'#000'},
+    {name:'Ted Baker',url:'https://www.tedbaker.com',color:'#1a1a1a'},
+    {name:'Hugo Boss',url:'https://www.hugoboss.com',color:'#000'},
+    {name:'Reiss',url:'https://www.reiss.com',color:'#1a1a1a'},
+  ],
+  streetwear:[
+    {name:'Urban Outfitters',url:'https://www.urbanoutfitters.com',color:'#1a1a1a'},
+    {name:'PacSun',url:'https://www.pacsun.com',color:'#1a1a1a'},
+    {name:'Foot Locker',url:'https://www.footlocker.com',color:'#1a1a1a'},
+    {name:'StockX',url:'https://stockx.com',color:'#00c04b'},
+    {name:'GOAT',url:'https://www.goat.com',color:'#000'},
+    {name:'Tillys',url:'https://www.tillys.com',color:'#e63946'},
+  ],
+  thrift:[
+    {name:'ThredUp',url:'https://www.thredup.com',color:'#3a7d44'},
+    {name:'Depop',url:'https://www.depop.com',color:'#ff2300'},
+    {name:'Poshmark',url:'https://poshmark.com',color:'#c02a47'},
+    {name:'Vinted',url:'https://www.vinted.com',color:'#09b1ba'},
+    {name:'eBay Fashion',url:'https://www.ebay.com/b/Clothing-Shoes-Accessories/bn_1865570',color:'#e53238'},
+    {name:'Goodwill',url:'https://shopgoodwill.com',color:'#0077be'},
+  ],
+};
+
+// ═══ STYLE DATA ═══
+const DATA = [
+  {id:0,cat:'business thirties',title:'Executive Presence',age:'30s–40s',type:'biz',icon:'👔',
+   desc:'Tailored suits and polished accessories that command respect in any boardroom.',budget:'$440–$925',
+   pieces:[{n:'Tailored Suit (Blazer + Trousers)',p:'$180–$320'},{n:'Dress Shirt (White/Blue)',p:'$45–$90'},{n:'Oxford Leather Shoes',p:'$80–$180'},{n:'Leather Belt',p:'$25–$60'},{n:'Silk Tie',p:'$30–$75'},{n:'Dress Watch',p:'$80–$200'}],total:'$440–$925',
+   shopTiers:['mid','premium'],
+   tips:[{h:'Fit first',t:'Jacket shoulders must sit perfectly.'},{h:'Color rule',t:'Navy, charcoal, white + one accent.'},{h:'Shoe care',t:'Black Oxfords go everywhere.'},{h:'Maintenance',t:'Dry clean every 5–6 wears.'}]},
+  {id:1,cat:'college teen twenties',title:'Campus Cool',age:'Teen–20s',type:'col',icon:'🎓',
+   desc:'Comfort-forward style that still looks intentional — clean sneakers and good-fitting jeans.',budget:'$190–$400',
+   pieces:[{n:'Heavyweight Hoodie',p:'$35–$75'},{n:'Slim Dark Jeans',p:'$40–$80'},{n:'White Leather Sneakers',p:'$60–$120'},{n:'Graphic Tee',p:'$15–$35'},{n:'Crossbody Bag',p:'$25–$60'},{n:'Cap or Beanie',p:'$15–$30'}],total:'$190–$400',
+   shopTiers:['budget','streetwear'],
+   tips:[{h:'Keep it clean',t:'Streetwear looks sharp when fresh.'},{h:'Fit matters',t:'Oversized when intentional.'},{h:'Sneakers',t:'One clean pair elevates everything.'},{h:'Layer',t:'Zip-up over tee adds instant interest.'}]},
+  {id:2,cat:'business twenties thirties',title:'Business Casual Elevated',age:'20s–30s',type:'biz',icon:'💼',
+   desc:'Blazers over chinos — smart without being stiff. Perfect for hybrid offices.',budget:'$305–$650',
+   pieces:[{n:'Slim Chinos',p:'$40–$80'},{n:'Oxford Button-Down Shirt',p:'$40–$75'},{n:'Unstructured Blazer',p:'$80–$180'},{n:'Leather Loafers',p:'$70–$150'},{n:'Leather Belt',p:'$25–$55'},{n:'Merino Sweater',p:'$50–$110'}],total:'$305–$650',
+   shopTiers:['mid','budget'],
+   tips:[{h:'Blazer trick',t:'Any casual outfit = business-ready with a blazer.'},{h:'Chino colors',t:'Navy, tan, olive rotate endlessly.'},{h:'Loafers',t:'Most versatile business casual shoe.'},{h:'No tie',t:'Keep collar clean and pressed.'}]},
+  {id:3,cat:'college twenties thirties',title:'Artsy Academic',age:'20s–30s',type:'col',icon:'🎨',
+   desc:'Vintage finds and statement pieces for students who see style as self-expression.',budget:'$140–$365',
+   pieces:[{n:'Vintage Blazer',p:'$10–$40'},{n:'Band Tee / Print Shirt',p:'$15–$35'},{n:'Wide-Leg Trousers',p:'$30–$65'},{n:'Doc Martens',p:'$60–$150'},{n:'Canvas Tote',p:'$15–$35'},{n:'Layered Jewelry',p:'$10–$40'}],total:'$140–$365',
+   shopTiers:['thrift','budget'],
+   tips:[{h:'Thrift wisely',t:'Look for quality fabrics in vintage shops.'},{h:'Mix textures',t:'Corduroy, denim, knit play well together.'},{h:'One statement',t:'One bold piece per outfit max.'},{h:'Accessories',t:'A distinctive bag is your signature.'}]},
+  {id:4,cat:'business mature thirties',title:'Distinguished Authority',age:'50s–64',type:'biz',icon:'👑',
+   desc:'Classic cuts and quality fabrics that project experience and timeless gravitas.',budget:'$505–$1,110',
+   pieces:[{n:'Classic Two-Piece Suit',p:'$200–$400'},{n:'Fine Cotton Dress Shirt',p:'$60–$120'},{n:'Quality Silk Tie',p:'$50–$100'},{n:'Cap-Toe Oxford Shoes',p:'$100–$250'},{n:'Pocket Square',p:'$15–$40'},{n:'Leather Briefcase',p:'$80–$200'}],total:'$505–$1,110',
+   shopTiers:['premium'],
+   tips:[{h:'Classic cuts',t:'Traditional cuts age and fit better.'},{h:'Fabric quality',t:'Wool, cotton, cashmere signal quality.'},{h:'Grooming',t:'Detail in presentation signals authority.'},{h:'Signature',t:'A distinctive watch is your trademark.'}]},
+  {id:5,cat:'college teen',title:'Teen Streetwear',age:'Teen (16–19)',type:'col',icon:'🔥',
+   desc:'Oversized fits, bold colorways, and sneaker culture done right.',budget:'$230–$520',
+   pieces:[{n:'Oversized Graphic Hoodie',p:'$30–$65'},{n:'Baggy or Relaxed Jeans',p:'$35–$70'},{n:'Statement Sneakers',p:'$80–$180'},{n:'Puffer Jacket',p:'$50–$120'},{n:'Dad Hat / Fitted Cap',p:'$15–$35'},{n:'Crossbody / Mini Backpack',p:'$20–$50'}],total:'$230–$520',
+   shopTiers:['streetwear','budget'],
+   tips:[{h:'Proportion',t:'Oversized top + fitted bottom = balance.'},{h:'Sneakers',t:'One standout pair anchors your wardrobe.'},{h:'Experiment',t:"This era is for bold choices."},{h:'Neutrals',t:'Let one loud piece carry the look.'}]},
+  {id:6,cat:'business college twenties thirties',title:'Smart Grad Transition',age:'20s–30s',type:'mix',icon:'⚡',
+   desc:'Bridging campus comfort with office readiness — ideal for internships and first jobs.',budget:'$280–$620',
+   pieces:[{n:'Dark Jeans (no distress)',p:'$40–$80'},{n:'Oxford / Button-Down Shirt',p:'$35–$70'},{n:'Leather or Suede Sneakers',p:'$60–$130'},{n:'Structured Blazer',p:'$70–$160'},{n:'Canvas or Leather Bag',p:'$35–$80'},{n:'Minimalist Watch',p:'$40–$100'}],total:'$280–$620',
+   shopTiers:['budget','mid'],
+   tips:[{h:'Interview kit',t:'Own one full business outfit minimum.'},{h:'Smart casual',t:'Dark jeans + blazer + leather shoes = office-ready.'},{h:'Bridge up',t:'Build from casual upward, not formal down.'},{h:'Context',t:'Learn each environment\'s dress code.'}]},
+  {id:7,cat:'business mature',title:'Power Formal',age:'50s–64',type:'biz',icon:'🏆',
+   desc:'Three-piece suits and commanding leather accessories for the highest-authority settings.',budget:'$655–$1,410',
+   pieces:[{n:'Three-Piece Suit (dark)',p:'$280–$550'},{n:'French-Cuff Dress Shirt',p:'$70–$140'},{n:'Quality Silk Tie',p:'$55–$110'},{n:'Cap-Toe Oxford Shoes',p:'$120–$280'},{n:'Metal Cufflinks',p:'$30–$80'},{n:'Leather Briefcase',p:'$100–$250'}],total:'$655–$1,410',
+   shopTiers:['premium'],
+   tips:[{h:'Three-piece',t:'The waistcoat signals gravitas.'},{h:'Color formula',t:'Dark suit + white shirt + one-color tie.'},{h:'Shoe shine',t:'Mirror-polished shoes communicate detail.'},{h:'French cuffs',t:'Cufflinks elevate any suit instantly.'}]},
+  {id:8,cat:'college thirties mature',title:'Mature Campus Style',age:'30s–40s',type:'col',icon:'📚',
+   desc:'Polished casual for grad students and adult learners — credible yet comfortable.',budget:'$240–$535',
+   pieces:[{n:'Dark Slim Chinos / Jeans',p:'$40–$80'},{n:'Polo Shirt / Fitted Crewneck',p:'$30–$65'},{n:'Merino Cardigan',p:'$50–$110'},{n:'Desert Boots or White Sneakers',p:'$55–$120'},{n:'Canvas or Leather Tote',p:'$30–$70'},{n:'Strap Watch',p:'$35–$90'}],total:'$240–$535',
+   shopTiers:['mid','budget'],
+   tips:[{h:'Credibility',t:'Slightly more polished earns natural respect.'},{h:'Comfort',t:'Long days need comfortable footwear.'},{h:'Palette',t:'Navy, white, grey, olive = foundation.'},{h:'Cardigan',t:'The academic power layer.'}]},
+];
+
+// ═══ CLOSET STATE ═══
+const closet={tops:[],bottoms:[],shoes:[],outer:[]};
+
+// ═══ RENDER CARDS ═══
+function renderCards(){
+  const g=document.getElementById('cGrid');
+  g.innerHTML='';
+  DATA.forEach((s,i)=>{
+    const shopRows=getShopRows(s.shopTiers);
+    const c=document.createElement('div');
+    c.className='sc reveal';c.style.transitionDelay=(i%3*0.08)+'s';
+    c.dataset.cat=s.cat;c.dataset.id=s.id;
+    c.innerHTML=`
+    <div class="sc-img" id="sim-${s.id}">
+      <div class="sc-loader" id="sld-${s.id}"><div class="sc-spin"></div><div style="font-size:.7rem;color:var(--text-faint);margin-top:.25rem">Loading…</div></div>
+      <span class="sc-price-tag">${s.budget}</span>
+      <span class="sc-type-tag tt-${s.type}">${s.type==='biz'?'Business':s.type==='col'?'College':'Mixed'}</span>
+    </div>
+    <div class="sc-body">
+      <div class="sc-tags"><span class="stag stag-${s.type==='biz'?'biz':'col'}">${s.type==='biz'?'Business':s.type==='col'?'College':'Mixed'}</span><span class="stag stag-age">${s.age}</span></div>
+      <div class="sc-title">${s.icon} ${s.title}</div>
+      <div class="sc-desc">${s.desc}</div>
+      <div class="sc-prices">
+        <div class="sc-prices-lbl">Outfit pieces</div>
+        ${s.pieces.slice(0,3).map(p=>`<div class="sc-price-row"><span>${p.n}</span><span>${p.p}</span></div>`).join('')}
+        <div class="sc-total-row"><span class="sc-total-lbl">Full outfit</span><span class="sc-total-val">${s.total}</span></div>
+      </div>
+      <div class="sc-shops">
+        <div class="sc-shops-lbl">Where to shop</div>
+        <div class="shop-chips">${shopRows.slice(0,4).map(sh=>`<a class="shop-chip" href="${sh.url}" target="_blank" rel="noopener"><span class="dot" style="background:${sh.color}"></span>${sh.name}</a>`).join('')}</div>
+      </div>
+    </div>
+    <div class="sc-footer"><span class="sc-range">${s.budget}</span><button class="view-more" onclick="openDetail(${s.id})">Full look</button></div>`;
+    g.appendChild(c);
+    loadImg(s);
+    // trigger reveal after short delay
+    setTimeout(()=>c.classList.add('visible'),100+i*60);
+  });
+}
+
+function getShopRows(tiers){
+  const shops=[];
+  tiers.forEach(t=>{ if(SHOPS[t]) shops.push(...SHOPS[t]);});
+  return shops;
+}
+
+async function loadImg(s){
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',max_tokens:400,
+      tools:[{type:'web_search_20250305',name:'web_search'}],
+      messages:[{role:'user',content:`Find a real fashion outfit image URL for: "${s.title}" (${s.age}, ${s.type==='biz'?'business professional':'college casual'}). Search fashion sites. Return ONLY JSON {"url":"https://...","alt":"..."} — URL must end in .jpg .jpeg .png or .webp`}]
+    })});
+    const d=await r.json();
+    let url=null,alt=s.title;
+    for(const b of(d.content||[])){if(b.type==='text'){try{const p=JSON.parse(b.text.replace(/```json|```/g,'').trim());if(p.url&&/\.(jpg|jpeg|png|webp)/i.test(p.url)){url=p.url;alt=p.alt||alt;}}catch(e){const m=b.text.match(/https?:\/\/[^\s"]+\.(jpg|jpeg|png|webp)/i);if(m)url=m[0];}}}
+    if(url){setCardImg(s.id,url,alt);}else setFallback(s.id,s.icon,s.title);
+  }catch(e){setFallback(s.id,s.icon,s.title);}
+}
+
+function setCardImg(id,url,alt){
+  const wrap=document.getElementById('sim-'+id),loader=document.getElementById('sld-'+id);
+  const img=document.createElement('img');img.alt=alt;
+  img.onload=()=>{if(loader)loader.style.display='none';};
+  img.onerror=()=>{const s=DATA.find(x=>x.id===id);setFallback(id,s?.icon||'👗',s?.title||'');};
+  img.src=url;
+  if(wrap)wrap.insertBefore(img,loader);
+}
+function setFallback(id,icon,title){
+  const l=document.getElementById('sld-'+id);
+  if(l)l.innerHTML=`<div style="font-size:2.8rem">${icon}</div><div style="font-size:.7rem;color:var(--text-faint);text-align:center;padding:0 .75rem">${title}</div>`;
+}
+
+// ═══ FILTER ═══
+function doFilter(cat,el){
+  document.querySelectorAll('.fpill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.sc').forEach(c=>{
+    if(cat==='all'){c.classList.remove('gone');return;}
+    c.classList.toggle('gone',!c.dataset.cat.includes(cat));
+  });
+}
+
+// ═══ DETAIL ═══
+async function openDetail(id){
+  const s=DATA.find(x=>x.id===id);
+  document.getElementById('dpTitle').textContent=s.icon+' '+s.title;
+  document.getElementById('dpDesc').textContent=s.desc;
+  document.getElementById('dpTags').innerHTML=`<span class="stag stag-${s.type==='biz'?'biz':'col'}">${s.type==='biz'?'Business':s.type==='col'?'College':'Mixed'}</span><span class="stag stag-age">${s.age}</span>`;
+  document.getElementById('dpOutfit').innerHTML=s.pieces.map(p=>`<div class="orow"><span class="orow-name">${p.n}</span><span class="orow-price">${p.p}</span></div>`).join('');
+  document.getElementById('dpTotalVal').textContent=s.total;
+  document.getElementById('dpTotal').style.display='flex';
+  const allShops=getShopRows(s.shopTiers);
+  document.getElementById('dpShops').innerHTML=allShops.map(sh=>`<a class="dp-shop-btn" href="${sh.url}" target="_blank" rel="noopener"><span style="width:8px;height:8px;border-radius:50%;background:${sh.color};flex-shrink:0"></span>${sh.name}<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M9 4l4 4-4 4"/></svg></a>`).join('');
+  document.getElementById('dpTips').innerHTML=s.tips.map(t=>`<div class="tip-block"><strong>${t.h}</strong><p>${t.t}</p></div>`).join('');
+  const hero=document.getElementById('dpHero');
+  hero.querySelectorAll('img').forEach(i=>i.remove());
+  const ld=document.getElementById('dpLoad');ld.style.display='flex';ld.innerHTML='<div class="sc-spin" style="width:26px;height:26px"></div><div style="font-size:.75rem;color:var(--text-faint);margin-top:.25rem">Loading image…</div>';
+  document.getElementById('overlay').classList.add('open');
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',max_tokens:400,
+      tools:[{type:'web_search_20250305',name:'web_search'}],
+      messages:[{role:'user',content:`Find a high-quality fashion photo for "${s.title}" (${s.age}, ${s.type==='biz'?'business':'college'} style). Return ONLY JSON {"url":"https://...","alt":"..."} with a direct image URL ending .jpg .jpeg .png or .webp`}]
+    })});
+    const d=await r.json();
+    let url=null,alt=s.title;
+    for(const b of(d.content||[])){if(b.type==='text'){try{const p=JSON.parse(b.text.replace(/```json|```/g,'').trim());if(p.url&&/\.(jpg|jpeg|png|webp)/i.test(p.url)){url=p.url;alt=p.alt||alt;}}catch(e){const m=b.text.match(/https?:\/\/[^\s"]+\.(jpg|jpeg|png|webp)/i);if(m)url=m[0];}}}
+    if(url){const img=document.createElement('img');img.alt=alt;img.style.cssText='width:100%;height:100%;object-fit:cover;position:absolute;inset:0';img.onload=()=>ld.style.display='none';img.onerror=()=>{ld.innerHTML=`<div style="font-size:3.5rem">${s.icon}</div>`;};img.src=url;hero.appendChild(img);}
+    else ld.innerHTML=`<div style="font-size:3.5rem">${s.icon}</div>`;
+  }catch(e){ld.innerHTML=`<div style="font-size:3.5rem">${s.icon}</div>`;}
+}
+function closeOv(e){if(e.target===document.getElementById('overlay'))document.getElementById('overlay').classList.remove('open');}
+
+// ═══ ANALYZER ═══
+let photoB64=null,photoType=null;
+function onPhotoUpload(e){
+  const f=e.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=ev=>{
+    photoB64=ev.target.result.split(',')[1];photoType=f.type||'image/jpeg';
+    document.getElementById('uprev').src=ev.target.result;document.getElementById('uprev').style.display='block';
+    document.getElementById('ucontent').style.display='none';
+  };rd.readAsDataURL(f);
+}
+const uz=document.getElementById('uzone');
+uz.addEventListener('dragover',e=>{e.preventDefault();uz.classList.add('over');});
+uz.addEventListener('dragleave',()=>uz.classList.remove('over'));
+uz.addEventListener('drop',e=>{e.preventDefault();uz.classList.remove('over');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/')){document.getElementById('photoFile').files=e.dataTransfer.files;onPhotoUpload({target:{files:[f]}});}});
+function tog(el){el.classList.toggle('on');}
+function solo(el,id){document.getElementById(id).querySelectorAll('.opt').forEach(o=>o.classList.remove('on'));el.classList.add('on');}
+function getOn(id){return[...document.getElementById(id).querySelectorAll('.on')].map(o=>o.textContent);}
+
+async function runAnalyze(){
+  const vibes=getOn('vibeOpts'),settings=getOn('settingOpts'),ages=getOn('ageOpts');
+  if(!vibes.length&&!photoB64){showToast('Pick a vibe or upload a photo to get started!');return;}
+  const btn=document.getElementById('aBtn'),txt=document.getElementById('aBtnTxt');
+  btn.disabled=true;txt.innerHTML='<span class="spin"></span> Analyzing…';
+  document.getElementById('resultBox').style.display='none';
+  try{
+    const msgs=[{role:'user',content:[]}];
+    if(photoB64)msgs[0].content.push({type:'image',source:{type:'base64',media_type:photoType,data:photoB64}});
+    msgs[0].content.push({type:'text',text:`You are an expert personal stylist. ${photoB64?'Analyze this photo — describe the current style, coloring, vibe, and give 1-2 specific improvements.':''} Style interests: ${vibes.join(', ')||'not specified'}. Context: ${settings.join(', ')||'general'}. Age: ${ages.join(', ')||'not specified'}. Respond with ONLY a JSON object: {"profileName":"2-4 word title","summary":"2-3 sentence personalized analysis and tip","tags":["tag1","tag2","tag3","tag4"]} — pure JSON, no markdown.`});
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:500,messages:msgs})});
+    const d=await r.json();
+    let res=null;
+    for(const b of(d.content||[])){if(b.type==='text'){try{res=JSON.parse(b.text.replace(/```json|```/g,'').trim());}catch(e){}}}
+    if(res){
+      document.getElementById('rName').textContent='✦ '+res.profileName;
+      document.getElementById('rBody').textContent=res.summary||'';
+      document.getElementById('rPills').innerHTML=(res.tags||[]).map(t=>`<span class="rpill">${t}</span>`).join('');
+    }else{
+      document.getElementById('rName').textContent='✦ Your Style Profile';
+      document.getElementById('rBody').textContent='Based on your selections, focus on quality basics, intentional fit, and a consistent color palette for your age group and setting.';
+      document.getElementById('rPills').innerHTML=vibes.slice(0,3).map(t=>`<span class="rpill">${t}</span>`).join('');
+    }
+    document.getElementById('resultBox').style.display='block';
+  }catch(e){
+    document.getElementById('rName').textContent='✦ Style Profile Ready';
+    document.getElementById('rBody').textContent='Focus on quality basics and consistent color palette for your age group and setting.';
+    document.getElementById('resultBox').style.display='block';
+  }
+  btn.disabled=false;txt.textContent='✦ Re-Analyze';
+}
+
+// ═══ CLOSET ═══
+function addC(cat){
+  const inp=document.getElementById(cat+'-in'),val=inp.value.trim();
+  if(!val){return;}
+  if(closet[cat].includes(val)){showToast('Already in your closet!');return;}
+  closet[cat].push(val);renderTags(cat);inp.value='';
+}
+function removeC(cat,val){closet[cat]=closet[cat].filter(v=>v!==val);renderTags(cat);}
+function renderTags(cat){
+  document.getElementById(cat+'-tags').innerHTML=closet[cat].map(v=>`<span class="ctag">${v}<button onclick="removeC('${cat}','${v}')">×</button></span>`).join('');
+}
+async function genOutfit(){
+  const all=[...closet.tops,...closet.bottoms,...closet.shoes,...closet.outer];
+  if(all.length<2){showToast('Add at least 2 clothing pieces first!');return;}
+  const btn=document.getElementById('genBtn'),txt=document.getElementById('genTxt');
+  btn.disabled=true;txt.innerHTML='<span class="spin"></span> Creating…';
+  document.getElementById('cempty').style.display='none';
+  document.getElementById('oshow').classList.remove('on');
+  try{
+    const inv=`Tops: ${closet.tops.join(', ')||'none'}. Bottoms: ${closet.bottoms.join(', ')||'none'}. Shoes: ${closet.shoes.join(', ')||'none'}. Outerwear/Extras: ${closet.outer.join(', ')||'none'}.`;
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:`You are a personal stylist. Create the best outfit from: ${inv} Use only items listed. Return ONLY JSON: {"outfitName":"2-4 word name","description":"2 sentences on the look and occasion","pieces":["item1","item2","item3"],"stylingTip":"one specific tip"} — pure JSON only.`}]})});
+    const d=await r.json();
+    let res=null;
+    for(const b of(d.content||[])){if(b.type==='text'){try{res=JSON.parse(b.text.replace(/```json|```/g,'').trim());}catch(e){}}}
+    if(res){
+      document.getElementById('oname').textContent='✦ '+res.outfitName;
+      document.getElementById('odesc').textContent=res.description||'';
+      document.getElementById('opieces').innerHTML=(res.pieces||[]).map(p=>`<div class="opiece">${p}</div>`).join('');
+      document.getElementById('otip').innerHTML=`<strong>Styling Tip</strong>${res.stylingTip||''}`;
+    }
+    document.getElementById('oshow').classList.add('on');
+  }catch(e){
+    document.getElementById('oname').textContent='✦ Your Outfit';
+    document.getElementById('odesc').textContent='A great combination from your wardrobe.';
+    document.getElementById('opieces').innerHTML=all.slice(0,4).map(p=>`<div class="opiece">${p}</div>`).join('');
+    document.getElementById('otip').innerHTML=`<strong>Styling Tip</strong>Let one piece be the focal point.`;
+    document.getElementById('oshow').classList.add('on');
+  }
+  btn.disabled=false;txt.textContent='✦ Create New Outfit';
+}
+
+// ═══ BEAUTY TABS ═══
+function swTab(prefix,age,el){
+  document.getElementById(prefix+'Tabs').querySelectorAll('.btab').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  ['teen','20s','30s','50s'].forEach(a=>{
+    const p=document.getElementById(prefix+'-'+a);
+    if(p)p.classList.toggle('on',a===age);
+  });
+}
+
+// ═══ NAV SCROLL ═══
+window.addEventListener('scroll',()=>{
+  document.getElementById('nav').classList.toggle('scrolled',window.scrollY>40);
+});
+
+// ═══ SMOOTH SCROLL ═══
+function smoothTo(id){document.getElementById(id)?.scrollIntoView({behavior:'smooth'});}
+
+// ═══ REVEAL ON SCROLL ═══
+const ro=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible');});
+},{threshold:.12});
+function initReveal(){document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));}
+
+// ═══ TOAST ═══
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ═══ INIT ═══
+renderCards();
+setTimeout(initReveal,100);
+// trigger hero reveals immediately
+document.querySelectorAll('.hero .reveal').forEach((el,i)=>{
+  setTimeout(()=>el.classList.add('visible'),100+i*120);
+});
+</script>
+</body>
+</html>
